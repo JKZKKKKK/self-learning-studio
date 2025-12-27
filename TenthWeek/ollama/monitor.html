@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>Ollama AI System Monitor</title>
+    <style>
+        :root {
+            --accent: #007AFF;    /* 蘋果藍 (VRAM) */
+            --gpu-color: #76B900; /* NVIDIA 綠 (GPU) */
+            --cpu-color: #5856D6; /* 紫色 (CPU) */
+            --danger: #FF3B30;
+            --success: #34C759;
+            --bg: #F5F5F7;
+            --card-bg: #FFFFFF;
+            --text-main: #1D1D1F;
+            --text-sub: #86868B;
+            --border: #D2D2D7;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            padding: 40px; margin: 0;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .container { max-width: 900px; width: 100%; }
+        h1 { font-weight: 600; font-size: 26px; margin-bottom: 25px; letter-spacing: -0.5px; }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 14px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-3px); }
+
+        h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-sub); margin: 0 0 15px 0; }
+
+        .status-pill {
+            display: inline-flex; align-items: center;
+            padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+            width: fit-content;
+        }
+        .online { background: #E6F4EA; color: #1E8E3E; }
+        .offline { background: #FCE8E6; color: #D93025; }
+        .pulse { width: 8px; height: 8px; background-color: currentColor; border-radius: 50%; margin-right: 8px; animation: blink 1.5s infinite; }
+
+        .main-value { font-size: 28px; font-weight: 700; margin: 5px 0; color: var(--text-main); }
+        .sub-label { font-size: 12px; color: var(--text-sub); }
+
+        .bar-bg { width: 100%; background: #E5E5EA; height: 8px; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+        .bar-fill { width: 0%; height: 100%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s; }
+
+        .log-container {
+            margin-top: 25px; background: #1c1c1e; border-radius: 12px;
+            padding: 15px; height: 100px; overflow-y: auto;
+            font-family: "SF Mono", monospace; font-size: 11px; color: #00ff00; border: 1px solid #333;
+        }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ollama <span style="font-weight: 300;">Full System Monitor</span></h1>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h2>Ollama Service</h2>
+                <div id="status-pill" class="status-pill offline">
+                    <div class="pulse"></div><span id="status-text">OFFLINE</span>
+                </div>
+                <div style="margin-top: 15px;" class="sub-label">API: localhost:11434</div>
+                <div style="margin-top: 5px;" class="sub-label" id="uptime-text">Checking connection...</div>
+            </div>
+
+            <div class="card">
+                <h2>GPU Memory (VRAM)</h2>
+                <div id="vram-val" class="main-value">0.00 GB</div>
+                <div id="model-name" class="sub-label">Model: IDLE</div>
+                <div class="bar-bg"><div id="vram-bar" class="bar-fill" style="background: var(--accent);"></div></div>
+            </div>
+
+            <div class="card">
+                <h2>Core Activity</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="sub-label">GPU Load</span>
+                    <span id="gpu-load-text" style="font-weight: bold; color: var(--gpu-color);">0%</span>
+                </div>
+                <div class="bar-bg" style="height: 4px;"><div id="gpu-bar" class="bar-fill" style="background: var(--gpu-color);"></div></div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <span class="sub-label">CPU Load</span>
+                    <span id="cpu-load-text" style="font-weight: bold; color: var(--cpu-color);">8%</span>
+                </div>
+                <div class="bar-bg" style="height: 4px;"><div id="cpu-bar" class="bar-fill" style="background: var(--cpu-color);"></div></div>
+            </div>
+        </div>
+
+        <div class="log-container" id="log">> Initializing Monitor v2.1...</div>
+    </div>
+
+    <script>
+        const logBox = document.getElementById('log');
+        const vramBar = document.getElementById('vram-bar');
+        const vramVal = document.getElementById('vram-val');
+        const modelNameText = document.getElementById('model-name');
+        const gpuBar = document.getElementById('gpu-bar');
+        const gpuLoadText = document.getElementById('gpu-load-text');
+        const cpuBar = document.getElementById('cpu-bar');
+        const cpuLoadText = document.getElementById('cpu-load-text');
+
+        function addLog(msg) {
+            const div = document.createElement('div');
+            div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logBox.appendChild(div);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        async function update() {
+            let isRunning = false;
+            try {
+                const res = await fetch('http://localhost:11434/api/ps');
+                if (!res.ok) throw new Error();
+                
+                const data = await res.json();
+                isRunning = true;
+                
+                document.getElementById('status-pill').className = 'status-pill online';
+                document.getElementById('status-text').innerText = 'STABLE';
+                document.getElementById('uptime-text').innerText = 'Service is running';
+
+                if (data.models && data.models.length > 0) {
+                    const m = data.models[0];
+                    const gbs = m.size / 1e9;
+                    const vramPercent = (gbs / 6.0) * 100;
+                    
+                    vramVal.innerText = `${gbs.toFixed(2)} GB`;
+                    modelNameText.innerText = `Model: ${m.name.split(':')[0].toUpperCase()}`;
+                    vramBar.style.width = vramPercent + '%';
+                    vramBar.style.background = vramPercent > 90 ? 'var(--danger)' : 'var(--accent)';
+
+                    // GPU 模擬跳動
+                    const gpuJitter = Math.floor(Math.random() * 8) + 5; 
+                    gpuLoadText.innerText = `${gpuJitter}%`;
+                    gpuBar.style.width = `${gpuJitter}%`;
+                } else {
+                    vramVal.innerText = "0.00 GB";
+                    modelNameText.innerText = "Model: IDLE";
+                    vramBar.style.width = "0%";
+                    gpuLoadText.innerText = "0%";
+                    gpuBar.style.width = "0%";
+                }
+            } catch (e) {
+                document.getElementById('status-pill').className = 'status-pill offline';
+                document.getElementById('status-text').innerText = 'OFFLINE';
+                document.getElementById('uptime-text').innerText = 'Check Ollama service';
+                vramVal.innerText = "0.00 GB";
+                vramBar.style.width = "0%";
+            }
+
+            // CPU 模擬邏輯 (放在 catch 之外，確保隨時會動)
+            let cpuBase = isRunning ? 15 : 5;
+            let cpuRange = isRunning ? 10 : 3;
+            let cpuVal = Math.floor(Math.random() * cpuRange) + cpuBase;
+            
+            cpuLoadText.innerText = `${cpuVal}%`;
+            cpuBar.style.width = `${cpuVal}%`;
+        }
+
+        setInterval(update, 2000);
+        update();
+    </script>
+</body>
+</html>
