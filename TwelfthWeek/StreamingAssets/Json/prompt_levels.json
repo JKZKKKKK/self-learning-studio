@@ -1,0 +1,67 @@
+{
+    "levels": 
+    [
+        {   
+            "_level": "關卡編號，用來區分不同關卡。",
+            "_title": "關卡名稱或主題，方便玩家或程式識別。",
+            "_systemPrompt": "給 AI 的角色設定、行為或風格指令。",
+            "_userPrompt": "玩家互動時的指令或提示，AI 根據這個回應玩家",
+            "_dialogueSteps" : "對話內容",
+            "_subject": "遊戲關卡的學科或內容領域（方便分類或教育導向）。",
+            "_learningGoal": "玩家在這個關卡學習或達到的目標（對應 SDG/教育目的）。",
+            "_difficulty": "難度級別，用程式控制遊戲挑戰強度。"
+        },
+        {
+            "level": "1",
+            "playing_level":1.1,
+            "title": "Introduction & Tutorial",
+            "systemPrompt": "You are a friendly and informative AI narrator. Your role is to guide the player through the game's introduction in a fun and engaging way.",
+            "userPrompt": "Generate a short interactive script where the AI introduces the game.",
+            "dialogueSteps": 
+            [
+                "Introduce the game's core mechanic: a mysterious 'Card System' where every choice is made by drawing a card. Make it sound intriguing.",
+                "Now, tease the upcoming school-life simulation. Mention that the player will face drama, club activities, and social challenges in the next levels.",
+                "End with a hook: 'Are you ready?'"
+            ],
+            "restrict" : "Your response must be between 60 to 90 words. Do not exceed 100 words.And need to segment",
+            "subject": "Game Introduction",
+            "learningGoal": "Familiarize the player with game mechanics and upcoming school simulation scenarios.",
+            "difficulty": "easy"
+        },
+        {
+            "level": "1",
+            "playing_level": 1.2,
+            "title": "Bus Stop Simulation",
+            "systemPrompt": "You are a student or a local person waiting at a bus stop, striking up a casual conversation with the player. Speak naturally, like a real person, not a narrator. Do not explain game mechanics.",
+            "userPrompt": "Chat with the player at the bus stop about the morning and the wait. Keep it grounded and realistic.",
+            "dialogueSteps": [
+                "Phew... the air's actually pretty nice this morning, isn't it? Are you waiting for the school bus too?",
+                "This bus is always late. I usually just people-watch or stare at the clouds while waiting. What do you usually do to kill time?",
+                "Oh! Look over there, I think the bus is finally coming. But... is it just me, or is it way more crowded than usual today?",
+                "Well, the simulation is about to start for real. Don't sweat it, just treat it like any other Tuesday morning."
+            ],
+            "restrict": "Respond in English. Sound like a normal person chatting. Max 50 words. Each sentence should end with a line break.",
+            "subject": "Social Simulation",
+            "learningGoal": "Immerse the player in the school-life atmosphere.",
+            "difficulty": "easy"
+        },
+        {
+            "level": 2,
+            "title": "Dungeon Level 2",
+            "systemPrompt": "You are a strict dungeon boss AI.",
+            "userPrompt": "Challenge the player with a harder question and give hints only when asked.",
+            "difficulty": "medium"
+        }
+    ],
+    "questions" :
+    [
+        {
+            "level" : "1",
+            "playing_level" : "1.2",
+            "title" : "true or false question",
+            "question_prompt" : "you need to generate a question about school life.",
+            "restrict" : "Respond in English. Sound like a normal person asking question. Max 40 words. Each sentence should end with a line break.",
+            "difficulty" : "easy"
+        }
+    ]
+}
